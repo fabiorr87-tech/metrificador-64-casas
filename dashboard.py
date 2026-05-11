@@ -24,7 +24,7 @@ from chess_training_utils import (
 DEFAULT_USERNAME = ""
 DEFAULT_ENGINE_PATH = os.environ.get(
     "STOCKFISH_PATH",
-    "stockfish" if os.name != "nt" else os.path.join("engines", "stockfish.exe")
+    os.path.join("engines", "stockfish.exe") if os.name == "nt" else "/usr/games/stockfish"
 )
 ENGINE_ANALYSIS_VERSION = "stockfish_v2"
 
