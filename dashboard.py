@@ -4183,6 +4183,15 @@ with col_black_rep:
 
 st.markdown("### 🔍 Variantes mais frequentes")
 
+try:
+    st.page_link(
+        "pages/2_Explorar_Variantes.py",
+        label="🔎 Abrir explorador de variantes",
+        icon="🔎"
+    )
+except Exception:
+    st.caption("Abra a página 'Explorar Variantes' pelo menu lateral para investigar partidas por variante.")
+
 variant_df = filtered_df[
     filtered_df["perspective"].str.startswith("Joguei:")
 ].copy()
