@@ -1874,6 +1874,168 @@ def get_profile_note(profile_df, aspecto):
     return float(value)
 
 
+def classify_rating_band(rating):
+    """Classifica o jogador por rating, usando uma escala prática inspirada na distribuição do Chess.com."""
+    try:
+        rating_value = int(float(rating))
+    except Exception:
+        return {
+            "name": "Faixa não identificada",
+            "range": "sem rating válido",
+            "min": None,
+            "max": None,
+            "profile": "Ainda não há rating suficiente para enquadrar o jogador em uma faixa.",
+            "experience": "Com mais partidas baixadas, o coach passa a calibrar melhor o tom das recomendações.",
+            "tone": "diagnóstico neutro",
+        }
+
+    bands = [
+        {
+            "name": "Iniciante",
+            "range": "0 a 800",
+            "min": 0,
+            "max": 800,
+            "profile": "pode estar consolidando regras, padrões elementares e princípios fundamentais de abertura.",
+            "experience": "é comum ainda haver muitos deslizes táticos simples, especialmente perdas de material em um lance. A prioridade é ganhar segurança nas jogadas e reduzir peças penduradas.",
+            "tone": "base e segurança",
+        },
+        {
+            "name": "Intermediário Inicial",
+            "range": "800 a 1200",
+            "min": 800,
+            "max": 1200,
+            "profile": "já possui noções básicas de tática e começa a aplicar princípios de abertura com alguma regularidade.",
+            "experience": "costuma enxergar combinações curtas de 1 ou 2 lances, mas ainda precisa ganhar consistência defensiva e ampliar a visão tática.",
+            "tone": "tática e consistência",
+        },
+        {
+            "name": "Intermediário Sólido",
+            "range": "1200 a 1600",
+            "min": 1200,
+            "max": 1600,
+            "profile": "está no grupo dos jogadores competitivos casuais, geralmente com repertório em formação e algum estudo regular do jogo.",
+            "experience": "a frequência de peças penduradas tende a diminuir, mas planos posicionais de longo prazo, transições para o meio-jogo e finais técnicos ainda costumam decidir muitas partidas.",
+            "tone": "repertório, planos e finais",
+        },
+        {
+            "name": "Avançado",
+            "range": "1600 a 2000",
+            "min": 1600,
+            "max": 2000,
+            "profile": "é um jogador muito forte para padrões amadores, frequentemente já dentro de uma faixa alta da plataforma.",
+            "experience": "domina temas táticos mais complexos, possui conhecimento específico de aberturas e defesas, e o ganho tende a vir de transições melhores, exploração de fraquezas sutis e finais teóricos.",
+            "tone": "refinamento técnico",
+        },
+        {
+            "name": "Candidato a Mestre / Classe A",
+            "range": "2000 a 2300",
+            "min": 2000,
+            "max": 2300,
+            "profile": "já é um jogador muito forte, com compreensão ampla do jogo e capacidade de competir em ambientes exigentes.",
+            "experience": "o erro tático tende a ser menos frequente; as partidas passam a ser decididas por detalhes técnicos, precisão na conversão, preparação específica e domínio de finais.",
+            "tone": "alta precisão e preparação",
+        },
+        {
+            "name": "Elite",
+            "range": "acima de 2300",
+            "min": 2300,
+            "max": None,
+            "profile": "está em faixa de nível profissional ou semiprofissional, compatível com jogadores titulados ou candidatos reais a titulação.",
+            "experience": "a análise deve partir do pressuposto de conhecimento significativo em todas as fases do jogo. O foco adequado é preparação profunda, microdecisões, gestão de risco, conversão técnica e revisão de pontos críticos com alta especificidade.",
+            "tone": "performance de alto nível",
+        },
+    ]
+
+    for band in bands:
+        lower_ok = rating_value >= band["min"]
+        upper_ok = band["max"] is None or rating_value < band["max"]
+        if lower_ok and upper_ok:
+            result = dict(band)
+            result["rating"] = rating_value
+            return result
+
+    result = dict(bands[0])
+    result["rating"] = rating_value
+    return result
+
+
+def rating_band_summary_text(rating_band):
+    if not rating_band or rating_band.get("min") is None:
+        return "Ainda não há rating válido suficiente para classificar o jogador por faixa."
+
+    return (
+        f"Pela classificação por rating adotada, o jogador está na faixa **{rating_band['name']}** "
+        f"({rating_band['range']}). Nesse nível, o perfil típico {rating_band['profile']} "
+        f"Na prática, {rating_band['experience']}"
+    )
+
+
+def rating_specific_coach_message(rating_band, trend):
+    if not rating_band or rating_band.get("min") is None:
+        return (
+            "Mensagem do coach: o painel já organiza dados suficientes para orientar o treino. "
+            "À medida que mais partidas forem baixadas e analisadas, as recomendações ficarão mais calibradas ao nível real do jogador."
+        )
+
+    name = rating_band["name"]
+    min_rating = rating_band.get("min") or 0
+
+    trend_hint = ""
+    if isinstance(trend, dict) and trend.get("label") == "ascensão":
+        trend_hint = " A curva recente em ascensão reforça que os ajustes já podem estar produzindo resposta prática."
+    elif isinstance(trend, dict) and trend.get("label") == "estabilização":
+        trend_hint = " A estabilidade recente sugere uma base consolidada: pequenas melhorias técnicas podem ser suficientes para destravar nova faixa."
+    elif isinstance(trend, dict) and trend.get("label") == "oscilação negativa":
+        trend_hint = " A oscilação recente deve ser lida como material de diagnóstico: ela ajuda a encontrar padrões recorrentes de perda de pontos."
+
+    if min_rating >= 2300:
+        return (
+            f"Mensagem do coach: o jogador está na faixa **{name}**, portanto a leitura deve ser tratada como análise de performance avançada, não como orientação básica. "
+            "O melhor uso do Metrificador é identificar microtendências: linhas em que a avaliação após a abertura oscila, momentos de conversão imperfeita, decisões críticas de meio-jogo e finais em que a precisão cai. "
+            "O ganho tende a vir de preparação direcionada, revisão profunda com engine e treinamento de posições críticas extraídas das próprias partidas."
+            f"{trend_hint}"
+        )
+
+    if min_rating >= 2000:
+        return (
+            f"Mensagem do coach: o jogador está na faixa **{name}**, um nível já muito forte. "
+            "As recomendações devem ser específicas: aprofundar repertório por estruturas, revisar partidas em que a vantagem objetiva não foi convertida, mapear finais recorrentes e usar o treinador de blunders para pontos de virada concretos. "
+            "Aqui, progresso não costuma vir de conselhos genéricos, mas de pequenos ajustes repetidos em posições críticas."
+            f"{trend_hint}"
+        )
+
+    if min_rating >= 1600:
+        return (
+            f"Mensagem do coach: o jogador está na faixa **{name}**, já muito forte para padrões amadores. "
+            "O próximo salto tende a vir de refinamento: transição abertura-meio-jogo, finais teóricos, redução de blunders em posições complexas e conversão mais limpa das vantagens. "
+            "O painel mostra onde concentrar energia sem estudar tudo ao mesmo tempo."
+            f"{trend_hint}"
+        )
+
+    if min_rating >= 1200:
+        return (
+            f"Mensagem do coach: o jogador está na faixa **{name}**, uma base competitiva real. "
+            "O caminho mais eficiente é fortalecer repertório, entender planos típicos das estruturas mais jogadas, treinar tática de forma regular e escolher alguns finais práticos para estudo. "
+            "Com dados das próprias partidas, cada ajuste tende a ser mais objetivo."
+            f"{trend_hint}"
+        )
+
+    if min_rating >= 800:
+        return (
+            f"Mensagem do coach: o jogador está na faixa **{name}**. "
+            "A prioridade é transformar boa intuição em consistência: tática curta, peças defendidas, segurança do rei e revisão dos blunders mais frequentes. "
+            "A evolução costuma ser visível quando as perdas simples de material diminuem."
+            f"{trend_hint}"
+        )
+
+    return (
+        f"Mensagem do coach: o jogador está na faixa **{name}**. "
+        "O foco deve ser construir segurança: não deixar peças sem defesa, reconhecer ameaças diretas, seguir princípios básicos de abertura e praticar mates e táticas simples. "
+        "A boa notícia é que pequenas correções nessa fase costumam gerar avanço rápido."
+        f"{trend_hint}"
+    )
+
+
 def describe_rating_trend(all_df):
     rating_df = all_df.dropna(subset=["rating", "date"]).copy() if all_df is not None else pd.DataFrame()
     if len(rating_df) < 4:
@@ -2064,7 +2226,7 @@ def get_strengths_and_improvements(base_df, profile_df):
     return strengths, improvements
 
 
-def build_training_plan(base_df, profile_df):
+def build_training_plan(base_df, profile_df, rating_band=None):
     plan = []
 
     opening_note = get_profile_note(profile_df, "Abertura")
@@ -2074,18 +2236,70 @@ def build_training_plan(base_df, profile_df):
     resilience_note = get_profile_note(profile_df, "Resiliência")
     time_note = get_profile_note(profile_df, "Tempo")
 
+    rating_min = rating_band.get("min") if isinstance(rating_band, dict) else None
+
+    # Jogadores muito fortes precisam de recomendações mais específicas e menos genéricas.
+    if rating_min is not None and rating_min >= 2300:
+        if opening_note is None or opening_note < 65:
+            plan.append("Faça uma revisão cirúrgica das linhas em que a avaliação após 15 lances fica abaixo do esperado; neste nível, pequenos desvios de preparação podem definir o tipo de meio-jogo obtido.")
+        else:
+            plan.append("Use a boa saída de abertura para aprofundar preparação por estruturas: planos-modelo, momentos de ruptura e finais típicos decorrentes das suas linhas principais.")
+
+        if tactics_note is None or tactics_note < 75:
+            plan.append("Revise apenas blunders e perdas grandes de avaliação com alto impacto prático, classificando-os por tema: cálculo forçado, avaliação posicional, gestão de risco ou decisão de conversão.")
+        else:
+            plan.append("Mantenha o controle tático com treino seletivo de posições críticas reais, priorizando lances candidatos e comparação entre melhores continuações da engine.")
+
+        if conversion_note is not None and conversion_note < 70:
+            plan.append("Mapeie posições em que a vantagem objetiva não virou vitória e estude o ponto exato em que a conversão deixou de ser técnica.")
+        elif endgame_note is not None and endgame_note < 70:
+            plan.append("Trabalhe finais de alta frequência do seu repertório: não apenas teoria básica, mas planos defensivos, zonas de zugzwang e transições favoráveis.")
+        else:
+            plan.append("Acompanhe microindicadores: precisão por fase, estabilidade da avaliação após a abertura e desempenho contra adversários da mesma faixa de força.")
+
+        return plan[:4]
+
+    if rating_min is not None and rating_min >= 2000:
+        if opening_note is None or opening_note < 65:
+            plan.append("Priorize as 2 linhas mais frequentes em que a avaliação após 15 lances fica negativa; busque planos típicos, não apenas memorização de lances.")
+        else:
+            plan.append("Aprofunde o repertório por estruturas: escolha posições críticas recorrentes e crie planos de meio-jogo associados a cada defesa ou abertura principal.")
+
+        if tactics_note is None or tactics_note < 70:
+            plan.append("Use o treinador de blunders para revisar pontos de virada reais; neste nível, o objetivo é identificar por que o lance candidato errado parecia atraente.")
+        else:
+            plan.append("Mantenha a força tática com revisão seletiva de posições complexas, dando atenção especial a recursos defensivos e lances intermediários.")
+
+        if endgame_note is not None and endgame_note < 65:
+            plan.append("Separe finais técnicos recorrentes do seu banco de partidas e estude método de conversão/defesa, especialmente torres e finais de peças menores.")
+        elif conversion_note is not None and conversion_note < 65:
+            plan.append("Revise partidas com vantagem objetiva não convertida e identifique se o problema foi troca errada, contrajogo permitido, cálculo ou plano impreciso.")
+        else:
+            plan.append("Monitore mensalmente precisão, conversão e avaliação após a abertura; nessa faixa, pequenos desvios repetidos são mais importantes do que erros isolados.")
+
+        return plan[:4]
+
     if opening_note is None or opening_note < 60:
-        plan.append("Escolha 1 ou 2 aberturas com pior avaliação após 15 lances e revise os planos típicos, não apenas a ordem exata dos lances.")
+        if rating_min is not None and rating_min >= 1600:
+            plan.append("Escolha 1 ou 2 aberturas com pior avaliação após 15 lances e revise planos de meio-jogo, rupturas temáticas e casas críticas da estrutura.")
+        else:
+            plan.append("Escolha 1 ou 2 aberturas com pior avaliação após 15 lances e revise os planos típicos, não apenas a ordem exata dos lances.")
     else:
         plan.append("Mantenha o repertório principal e aprofunde as posições mais frequentes da árvore de aberturas, buscando planos de meio-jogo claros.")
 
     if tactics_note is None or tactics_note < 65:
-        plan.append("Faça blocos curtos de tática com foco em cálculo antes de capturas, ameaças e lances forçados. O objetivo principal é reduzir blunders, não resolver problemas impossíveis.")
+        if rating_min is not None and rating_min < 1200:
+            plan.append("Faça treino tático curto e diário com foco em peças penduradas, garfos, cravadas, mates simples e ameaças diretas antes de procurar temas sofisticados.")
+        else:
+            plan.append("Faça blocos curtos de tática com foco em cálculo antes de capturas, ameaças e lances forçados. O objetivo principal é reduzir blunders, não resolver problemas impossíveis.")
     else:
         plan.append("Use o bom controle tático como base para estudar posições críticas das suas próprias partidas, especialmente momentos em que a avaliação mudou muito.")
 
     if endgame_note is not None and endgame_note < 60:
-        plan.append("Treine finais práticos que aparecem no seu banco de partidas: torres, bispos de cores opostas e finais com material reduzido.")
+        if rating_min is not None and rating_min >= 1600:
+            plan.append("Aprimore finais teóricos e práticos que aparecem no seu banco de partidas; nesse nível, finais de torres e peças menores podem decidir muitos pontos.")
+        else:
+            plan.append("Treine finais práticos que aparecem no seu banco de partidas: torres, bispos de cores opostas e finais com material reduzido.")
     elif conversion_note is not None and conversion_note < 60:
         plan.append("Ao obter vantagem, pratique técnica de conversão: trocar peças certas, evitar contrajogo e transformar vantagem dinâmica em vantagem material ou final favorável.")
     elif resilience_note is not None and resilience_note < 45:
@@ -2110,17 +2324,28 @@ def render_rule_based_coach(base_df, all_df, profile_df, highest_rating_all_time
     winrate = (total_score / total_games * 100) if total_games > 0 else 0
 
     rating_df = base_df.dropna(subset=["rating"]).copy() if "rating" in base_df.columns else pd.DataFrame()
+    current_rating_value = None
     if len(rating_df) > 0:
         rating_df["rating"] = pd.to_numeric(rating_df["rating"], errors="coerce")
         rating_df = rating_df.dropna(subset=["rating"]).sort_values("date")
-        current_rating = int(rating_df.iloc[-1]["rating"]) if len(rating_df) > 0 else "N/A"
+        current_rating_value = int(rating_df.iloc[-1]["rating"]) if len(rating_df) > 0 else None
+        current_rating = current_rating_value if current_rating_value is not None else "N/A"
     else:
         current_rating = "N/A"
+
+    rating_reference = current_rating_value
+    if rating_reference is None and highest_rating_all_time not in [None, "N/A"]:
+        try:
+            rating_reference = int(float(highest_rating_all_time))
+        except Exception:
+            rating_reference = None
+
+    rating_band = classify_rating_band(rating_reference)
 
     trend = describe_rating_trend(all_df)
     style = infer_player_style(base_df, profile_df)
     strengths, improvements = get_strengths_and_improvements(base_df, profile_df)
-    training_plan = build_training_plan(base_df, profile_df)
+    training_plan = build_training_plan(base_df, profile_df, rating_band=rating_band)
 
     white_lines = get_top_repertoire_lines(base_df, "Brancas", limit=2)
     black_lines = get_top_repertoire_lines(base_df, "Pretas", limit=2)
@@ -2163,6 +2388,7 @@ def render_rule_based_coach(base_df, all_df, profile_df, highest_rating_all_time
             f"O rating atual exibido no filtro é **{current_rating}** e o maior rating registrado no histórico baixado é **{highest_rating_all_time}**. "
             f"{trend['text']} {engine_text}"
         )
+        st.markdown(rating_band_summary_text(rating_band))
 
     col_style, col_rep = st.columns([1.1, 1])
 
@@ -2208,11 +2434,7 @@ def render_rule_based_coach(base_df, all_df, profile_df, highest_rating_all_time
     for i, item in enumerate(training_plan, start=1):
         st.markdown(f"**{i}.** {item}")
 
-    st.success(
-        "Mensagem do coach: o quadro é promissor. Você já transformou suas partidas em dados concretos, "
-        "e isso muda a qualidade do treino. O próximo salto tende a vir de ajustes específicos, não de estudar tudo ao mesmo tempo: "
-        "corrigir poucas linhas críticas, reduzir blunders recorrentes e acompanhar a evolução com consistência."
-    )
+    st.success(rating_specific_coach_message(rating_band, trend))
 
 
 # =========================
