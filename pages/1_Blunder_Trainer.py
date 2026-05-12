@@ -46,54 +46,243 @@ st.set_page_config(
 st.markdown(
     """
     <style>
+    /* =========================
+       PALETA CAFÉ E MADEIRA
+       Treinador de Blunders
+       ========================= */
+    :root {
+        --bg-main: #2C2520;
+        --bg-deep: #241E1A;
+        --bg-card: #3E352F;
+        --bg-card-soft: #4A4038;
+        --accent: #C9A063;
+        --accent-soft: rgba(201, 160, 99, 0.20);
+        --text-main: #F5EBE0;
+        --text-soft: #E6D6C3;
+        --border-soft: rgba(201, 160, 99, 0.30);
+        --shadow-soft: rgba(0, 0, 0, 0.28);
+    }
+
     .stApp {
-        background: linear-gradient(135deg, #eaf3ff 0%, #dcecff 45%, #f7fbff 100%);
-        color: #1f2937;
+        background: linear-gradient(135deg, #2C2520 0%, #241E1A 55%, #2F261F 100%);
+        color: var(--text-main);
     }
-    h1, h2, h3 { color: #0f172a; }
+
+    .main .block-container {
+        background: transparent;
+        color: var(--text-main);
+        padding-top: 2rem;
+    }
+
+    h1, h2, h3, h4, h5, h6 {
+        color: var(--text-main) !important;
+    }
+
+    p, li, span, label, div {
+        color: var(--text-main);
+    }
+
+    a {
+        color: var(--accent) !important;
+        font-weight: 700;
+        text-decoration: none;
+    }
+
+    a:hover {
+        text-decoration: underline;
+    }
+
     section[data-testid="stSidebar"] {
-        background: linear-gradient(180deg, #dbeafe 0%, #eff6ff 100%);
-        border-right: 1px solid rgba(59, 130, 246, 0.18);
+        background: linear-gradient(180deg, #241E1A 0%, #2C2520 55%, #352C26 100%);
+        border-right: 1px solid var(--border-soft);
     }
+
+    section[data-testid="stSidebar"] * {
+        color: var(--text-main) !important;
+    }
+
     .trainer-card {
-        background: rgba(255,255,255,0.82);
-        border: 1px solid rgba(148, 163, 184, 0.35);
-        border-radius: 16px;
+        background: rgba(62, 53, 47, 0.92);
+        border: 1px solid var(--border-soft);
+        border-radius: 18px;
         padding: 1rem 1.1rem;
         margin-bottom: 1rem;
-        box-shadow: 0 4px 14px rgba(15, 23, 42, 0.06);
+        box-shadow: 0 6px 18px var(--shadow-soft);
     }
+
+    .trainer-card strong,
+    .trainer-card code {
+        color: var(--accent) !important;
+    }
+
     .success-box {
-        background: #dcfce7;
-        border: 1px solid #86efac;
-        color: #14532d;
+        background: rgba(62, 53, 47, 0.96);
+        border: 1px solid rgba(74, 222, 128, 0.45);
+        color: #DDF7E8;
         border-radius: 14px;
         padding: 0.85rem 1rem;
-        font-weight: 600;
+        font-weight: 700;
+        box-shadow: 0 4px 14px var(--shadow-soft);
     }
+
     .warning-box {
-        background: #fef9c3;
-        border: 1px solid #fde68a;
-        color: #713f12;
+        background: rgba(74, 64, 56, 0.96);
+        border: 1px solid var(--accent);
+        color: #F8E7BE;
         border-radius: 14px;
         padding: 0.85rem 1rem;
-        font-weight: 600;
+        font-weight: 700;
+        box-shadow: 0 4px 14px var(--shadow-soft);
     }
+
     .danger-box {
-        background: #fee2e2;
-        border: 1px solid #fecaca;
-        color: #7f1d1d;
+        background: rgba(74, 45, 40, 0.96);
+        border: 1px solid rgba(248, 113, 113, 0.58);
+        color: #F8D3C9;
         border-radius: 14px;
         padding: 0.85rem 1rem;
+        font-weight: 700;
+        box-shadow: 0 4px 14px var(--shadow-soft);
+    }
+
+    .neutral-box {
+        background: rgba(62, 53, 47, 0.96);
+        border: 1px solid var(--border-soft);
+        color: var(--text-main);
+        border-radius: 14px;
+        padding: 0.85rem 1rem;
+        font-weight: 700;
+        box-shadow: 0 4px 14px var(--shadow-soft);
+    }
+
+    .neutral-box, .neutral-box * {
+        color: var(--text-main) !important;
+    }
+
+    div[data-testid="stMetric"] {
+        background: var(--bg-card);
+        border: 1px solid var(--border-soft);
+        padding: 1rem;
+        border-radius: 16px;
+        box-shadow: 0 5px 16px var(--shadow-soft);
+    }
+
+    div[data-testid="stMetric"] label {
+        color: var(--text-soft) !important;
         font-weight: 600;
     }
-    .neutral-box {
-        background: #eff6ff;
-        border: 1px solid #bfdbfe;
-        color: #1e3a8a;
+
+    div[data-testid="stMetricValue"] {
+        color: var(--accent) !important;
+        font-weight: 800;
+    }
+
+    .stButton > button,
+    div[data-testid="stFormSubmitButton"] button {
+        background: linear-gradient(135deg, #4A3C33 0%, #5A493D 100%);
+        color: var(--text-main) !important;
+        border: 1px solid var(--border-soft);
+        border-radius: 12px;
+        font-weight: 700;
+        box-shadow: 0 3px 10px rgba(0,0,0,0.20);
+    }
+
+    .stButton > button:hover,
+    div[data-testid="stFormSubmitButton"] button:hover {
+        border-color: var(--accent);
+        color: var(--accent) !important;
+        background: linear-gradient(135deg, #55463C 0%, #675241 100%);
+    }
+
+    .stTextInput input,
+    .stNumberInput input,
+    .stTextArea textarea {
+        background: #3A312B !important;
+        color: var(--text-main) !important;
+        border: 1px solid var(--border-soft) !important;
+        border-radius: 10px !important;
+    }
+
+    .stTextInput input::placeholder,
+    .stTextArea textarea::placeholder {
+        color: rgba(245, 235, 224, 0.55) !important;
+    }
+
+    div[data-baseweb="select"] > div {
+        background: #3A312B !important;
+        color: var(--text-main) !important;
+        border: 1px solid var(--border-soft) !important;
+        border-radius: 10px !important;
+    }
+
+    div[data-baseweb="select"] span {
+        color: var(--text-main) !important;
+    }
+
+    div[role="listbox"] {
+        background: #3A312B !important;
+        border: 1px solid var(--border-soft) !important;
+    }
+
+    div[role="option"] {
+        background: #3A312B !important;
+        color: var(--text-main) !important;
+    }
+
+    div[role="option"]:hover {
+        background: #4A4038 !important;
+    }
+
+    div[role="radiogroup"] label,
+    div[data-testid="stCheckbox"] label {
+        color: var(--text-main) !important;
+    }
+
+    [data-testid="stCaptionContainer"],
+    [data-testid="stCaptionContainer"] * {
+        color: var(--text-soft) !important;
+    }
+
+    code {
+        background: rgba(201, 160, 99, 0.14) !important;
+        color: var(--accent) !important;
+        border-radius: 6px;
+        padding: 0.12rem 0.28rem;
+    }
+
+    details {
+        background: var(--bg-card);
+        border: 1px solid var(--border-soft);
         border-radius: 14px;
-        padding: 0.85rem 1rem;
-        font-weight: 600;
+        padding: 0.6rem;
+        color: var(--text-main);
+        box-shadow: 0 4px 14px var(--shadow-soft);
+    }
+
+    details summary {
+        color: var(--accent) !important;
+        font-weight: 700;
+    }
+
+    div[data-testid="stAlert"] {
+        background: var(--bg-card-soft);
+        border: 1px solid var(--border-soft);
+        color: var(--text-main);
+        border-radius: 12px;
+    }
+
+    div[data-testid="stAlert"] * {
+        color: var(--text-main) !important;
+    }
+
+    iframe {
+        border-radius: 16px;
+        background: var(--bg-card);
+        box-shadow: 0 6px 18px var(--shadow-soft);
+    }
+
+    hr {
+        border-color: var(--border-soft);
     }
     </style>
     """,
