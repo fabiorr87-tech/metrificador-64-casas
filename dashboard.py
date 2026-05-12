@@ -12,6 +12,7 @@ import pandas as pd
 import streamlit as st
 import plotly.express as px
 import plotly.graph_objects as go
+import plotly.io as pio
 import streamlit.components.v1 as components
 
 from chess_training_utils import (
@@ -24,7 +25,7 @@ from chess_training_utils import (
 DEFAULT_USERNAME = ""
 DEFAULT_ENGINE_PATH = os.environ.get(
     "STOCKFISH_PATH",
-    os.path.join("engines", "stockfish.exe") if os.name == "nt" else "/usr/games/stockfish"
+    "stockfish" if os.name != "nt" else os.path.join("engines", "stockfish.exe")
 )
 ENGINE_ANALYSIS_VERSION = "stockfish_v2"
 
@@ -462,10 +463,10 @@ def result_to_pt(result_label):
 
 def game_row_style(result_label):
     if result_label == "win":
-        return "color: #14532d; font-weight: 700;"
+        return "color: #9EE6A4; font-weight: 700;"
     if result_label == "loss":
-        return "color: #991b1b; font-weight: 700;"
-    return "color: #111827;"
+        return "color: #F2A6A0; font-weight: 700;"
+    return "color: #F5EBE0;"
 
 
 def html_escape(value):
@@ -518,38 +519,45 @@ def show_games_table(games_df):
         margin-top: 0.5rem;
         margin-bottom: 1rem;
         border-radius: 14px;
-        box-shadow: 0 4px 14px rgba(15, 23, 42, 0.06);
+        box-shadow: 0 6px 18px rgba(0, 0, 0, 0.28);
+        border: 1px solid rgba(201, 160, 99, 0.30);
     }
     table.games-table {
         width: 100%;
         border-collapse: collapse;
-        background: rgba(255, 255, 255, 0.86);
+        background: rgba(62, 53, 47, 0.92);
         border-radius: 14px;
         overflow: hidden;
         font-size: 0.92rem;
+        color: #F5EBE0;
     }
     table.games-table th {
-        background: rgba(219, 234, 254, 0.95);
-        color: #0f172a;
+        background: rgba(74, 64, 56, 0.98);
+        color: #C9A063;
         text-align: left;
         padding: 0.65rem 0.75rem;
-        border-bottom: 1px solid rgba(148, 163, 184, 0.35);
+        border-bottom: 1px solid rgba(201, 160, 99, 0.30);
         white-space: nowrap;
     }
     table.games-table td {
         padding: 0.55rem 0.75rem;
-        border-bottom: 1px solid rgba(203, 213, 225, 0.45);
+        border-bottom: 1px solid rgba(201, 160, 99, 0.18);
         vertical-align: top;
+        color: #F5EBE0;
     }
     table.games-table tr:last-child td {
         border-bottom: none;
     }
+    table.games-table tr:hover td {
+        background: rgba(201, 160, 99, 0.08);
+    }
     table.games-table a {
-        color: #1d4ed8;
+        color: #E0BE7C;
         font-weight: 700;
         text-decoration: none;
     }
     table.games-table a:hover {
+        color: #C9A063;
         text-decoration: underline;
     }
     </style>
@@ -2436,96 +2444,261 @@ st.set_page_config(
     layout="wide"
 )
 
+# Tema visual global dos gráficos Plotly: paleta Café e Madeira.
+COFFEE_BG = "#2C2520"
+COFFEE_CARD = "#3E352F"
+COFFEE_ACCENT = "#C9A063"
+COFFEE_TEXT = "#F5EBE0"
+COFFEE_GRID = "rgba(201, 160, 99, 0.18)"
+
+pio.templates["coffee_wood"] = go.layout.Template(
+    layout=go.Layout(
+        paper_bgcolor=COFFEE_CARD,
+        plot_bgcolor=COFFEE_CARD,
+        font=dict(color=COFFEE_TEXT),
+        colorway=[COFFEE_ACCENT, "#E0BE7C", "#8A6E4C", "#CBB8A3", "#9EE6A4", "#F2A6A0"],
+        xaxis=dict(gridcolor=COFFEE_GRID, zerolinecolor=COFFEE_GRID),
+        yaxis=dict(gridcolor=COFFEE_GRID, zerolinecolor=COFFEE_GRID),
+        polar=dict(
+            bgcolor=COFFEE_CARD,
+            radialaxis=dict(gridcolor=COFFEE_GRID, linecolor=COFFEE_GRID, tickfont=dict(color=COFFEE_TEXT)),
+            angularaxis=dict(gridcolor=COFFEE_GRID, linecolor=COFFEE_GRID, tickfont=dict(color=COFFEE_TEXT)),
+        ),
+        legend=dict(font=dict(color=COFFEE_TEXT)),
+        title=dict(font=dict(color=COFFEE_TEXT)),
+    )
+)
+pio.templates.default = "coffee_wood"
+px.defaults.template = "coffee_wood"
+
 st.markdown(
     """
     <style>
-    /* Fundo geral em degradê azul discreto */
+    /* =========================
+       PALETA CAFÉ E MADEIRA
+       ========================= */
+
+    :root {
+        --bg-main: #2C2520;
+        --bg-main-2: #241E1A;
+        --bg-main-3: #332B25;
+        --bg-card: #3E352F;
+        --bg-card-2: #4A4038;
+        --accent: #C9A063;
+        --accent-soft: #E0BE7C;
+        --text-main: #F5EBE0;
+        --text-soft: #E6D6C3;
+        --text-muted: #CBB8A3;
+        --border-soft: rgba(201, 160, 99, 0.30);
+        --shadow-soft: rgba(0, 0, 0, 0.28);
+        --success-text: #9EE6A4;
+        --danger-text: #F2A6A0;
+    }
+
+    /* Fundo geral com degradê discreto */
     .stApp {
-        background: linear-gradient(135deg, #eaf3ff 0%, #dcecff 45%, #f7fbff 100%);
-        color: #1f2937;
+        background: linear-gradient(135deg, #2C2520 0%, #241E1A 52%, #332B25 100%);
+        color: var(--text-main);
     }
 
     /* Área principal */
     .block-container {
         padding-top: 2rem;
         padding-bottom: 3rem;
+        color: var(--text-main);
     }
 
     /* Sidebar */
     section[data-testid="stSidebar"] {
-        background: linear-gradient(180deg, #dbeafe 0%, #eff6ff 100%);
-        border-right: 1px solid rgba(59, 130, 246, 0.18);
+        background: linear-gradient(180deg, #211B17 0%, #2C2520 58%, #241E1A 100%);
+        border-right: 1px solid var(--border-soft);
     }
 
-    /* Títulos */
-    h1, h2, h3 {
-        color: #0f172a;
+    section[data-testid="stSidebar"] * {
+        color: var(--text-main) !important;
     }
 
-/* Cards de métricas */
-div[data-testid="stMetric"] {
-    background: linear-gradient(135deg, #14532d 0%, #166534 55%, #15803d 100%);
-    border: 1px solid rgba(187, 247, 208, 0.45);
-    padding: 1rem;
-    border-radius: 16px;
-    box-shadow: 0 4px 14px rgba(20, 83, 45, 0.28);
-}
+    /* Títulos e textos */
+    h1, h2, h3, h4, h5, h6 {
+        color: var(--text-main) !important;
+        letter-spacing: -0.01em;
+    }
 
-/* Texto dos cards de métricas */
-div[data-testid="stMetric"] label,
-div[data-testid="stMetric"] div,
-div[data-testid="stMetric"] span {
-    color: #f0fdf4 !important;
-}
+    p, li, span, label, div {
+        color: var(--text-main);
+    }
 
-/* Valor principal da métrica */
-div[data-testid="stMetricValue"] {
-    color: #ffffff !important;
-    font-weight: 700;
-}
+    .stCaption, [data-testid="stCaptionContainer"], small {
+        color: var(--text-muted) !important;
+    }
 
-/* Delta/variação da métrica */
-div[data-testid="stMetricDelta"] {
-    color: #dcfce7 !important;
-}
+    a {
+        color: var(--accent-soft) !important;
+        text-decoration-color: rgba(201, 160, 99, 0.45) !important;
+    }
 
-    /* Caixas/tabelas/gráficos */
+    a:hover {
+        color: var(--accent) !important;
+    }
+
+    /* Cards de métricas */
+    div[data-testid="stMetric"] {
+        background: linear-gradient(135deg, #3E352F 0%, #4A4038 100%);
+        border: 1px solid var(--border-soft);
+        padding: 1rem;
+        border-radius: 16px;
+        box-shadow: 0 6px 18px var(--shadow-soft);
+    }
+
+    div[data-testid="stMetric"] label,
+    div[data-testid="stMetric"] div,
+    div[data-testid="stMetric"] span {
+        color: var(--text-soft) !important;
+    }
+
+    div[data-testid="stMetricValue"] {
+        color: var(--accent) !important;
+        font-weight: 800;
+    }
+
+    div[data-testid="stMetricDelta"] {
+        color: var(--accent-soft) !important;
+    }
+
+    /* Containers de gráficos e tabelas */
     div[data-testid="stDataFrame"],
-    div[data-testid="stPlotlyChart"] {
-        background: rgba(255, 255, 255, 0.72);
+    div[data-testid="stPlotlyChart"],
+    div[data-testid="stTable"] {
+        background: rgba(62, 53, 47, 0.82);
+        border: 1px solid var(--border-soft);
         border-radius: 16px;
         padding: 0.5rem;
-        box-shadow: 0 4px 14px rgba(15, 23, 42, 0.06);
+        box-shadow: 0 6px 18px var(--shadow-soft);
+    }
+
+    /* Dataframe: tenta harmonizar área interna */
+    div[data-testid="stDataFrame"] * {
+        color: var(--text-main);
+    }
+
+    /* Cards/caixas markdown customizadas usadas no app */
+    .trainer-card,
+    .custom-card,
+    .neutral-box {
+        background: rgba(62, 53, 47, 0.92) !important;
+        border: 1px solid var(--border-soft) !important;
+        color: var(--text-main) !important;
+        box-shadow: 0 6px 18px var(--shadow-soft) !important;
     }
 
     /* Botões */
     .stButton > button {
-        background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
-        color: white;
-        border: none;
+        background: linear-gradient(135deg, #5A493D 0%, #7A6044 100%);
+        color: var(--text-main) !important;
+        border: 1px solid var(--border-soft);
         border-radius: 12px;
         padding: 0.55rem 1rem;
-        font-weight: 600;
-        box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);
+        font-weight: 700;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.22);
     }
 
     .stButton > button:hover {
-        background: linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%);
-        color: white;
-        border: none;
+        background: linear-gradient(135deg, #6B5748 0%, #8A6E4C 100%);
+        color: var(--accent) !important;
+        border-color: var(--accent);
     }
 
     /* Inputs e selects */
-    div[data-baseweb="select"] > div,
+    .stTextInput input,
+    .stNumberInput input,
+    .stTextArea textarea,
     input {
+        background: #3A312B !important;
+        color: var(--text-main) !important;
+        border: 1px solid var(--border-soft) !important;
         border-radius: 10px !important;
+    }
+
+    .stTextInput input::placeholder,
+    .stTextArea textarea::placeholder {
+        color: var(--text-muted) !important;
+        opacity: 0.8;
+    }
+
+    div[data-baseweb="select"] > div {
+        background: #3A312B !important;
+        color: var(--text-main) !important;
+        border: 1px solid var(--border-soft) !important;
+        border-radius: 10px !important;
+    }
+
+    div[data-baseweb="select"] span,
+    div[data-baseweb="select"] div {
+        color: var(--text-main) !important;
+    }
+
+    /* Radio, checkbox, sliders */
+    div[role="radiogroup"] label,
+    div[data-testid="stCheckbox"] label,
+    div[data-testid="stSlider"] label {
+        color: var(--text-main) !important;
     }
 
     /* Expanders */
     details {
-        background: rgba(255, 255, 255, 0.65);
+        background: rgba(62, 53, 47, 0.86) !important;
         border-radius: 12px;
-        border: 1px solid rgba(148, 163, 184, 0.28);
+        border: 1px solid var(--border-soft) !important;
+        color: var(--text-main) !important;
+        box-shadow: 0 4px 14px var(--shadow-soft);
+    }
+
+    details summary,
+    details summary * {
+        color: var(--accent-soft) !important;
+        font-weight: 700;
+    }
+
+    /* Alertas */
+    div[data-testid="stAlert"] {
+        background: #4A4038;
+        border: 1px solid var(--border-soft);
+        color: var(--text-main);
+        border-radius: 12px;
+    }
+
+    div[data-testid="stAlert"] * {
+        color: var(--text-main) !important;
+    }
+
+    /* Separadores */
+    hr {
+        border-color: var(--border-soft);
+    }
+
+    /* Tabs / navegação */
+    button[data-baseweb="tab"] {
+        color: var(--text-soft) !important;
+        background: transparent !important;
+    }
+
+    button[data-baseweb="tab"][aria-selected="true"] {
+        color: var(--accent) !important;
+        border-bottom: 2px solid var(--accent) !important;
+    }
+
+    /* Código inline */
+    code {
+        background: #2C2520 !important;
+        color: var(--accent-soft) !important;
+        border: 1px solid rgba(201, 160, 99, 0.18);
+        border-radius: 6px;
+    }
+
+    /* Destaques */
+    .highlight,
+    .accent-text {
+        color: var(--accent) !important;
     }
     </style>
     """,
@@ -3007,15 +3180,30 @@ if len(filtered_df) > 0:
             r=radar_values_closed,
             theta=radar_categories_closed,
             fill="toself",
-            name="Perfil"
+            name="Perfil",
+            line=dict(color=COFFEE_ACCENT, width=3),
+            fillcolor="rgba(201, 160, 99, 0.34)",
+            marker=dict(color=COFFEE_ACCENT, size=7)
         ))
         fig_profile.update_layout(
             polar=dict(
+                bgcolor=COFFEE_CARD,
                 radialaxis=dict(
                     visible=True,
-                    range=[0, 100]
+                    range=[0, 100],
+                    gridcolor=COFFEE_GRID,
+                    linecolor=COFFEE_GRID,
+                    tickfont=dict(color=COFFEE_TEXT)
+                ),
+                angularaxis=dict(
+                    gridcolor=COFFEE_GRID,
+                    linecolor=COFFEE_GRID,
+                    tickfont=dict(color=COFFEE_TEXT)
                 )
             ),
+            paper_bgcolor=COFFEE_CARD,
+            plot_bgcolor=COFFEE_CARD,
+            font=dict(color=COFFEE_TEXT),
             showlegend=False,
             title="Notas aproximadas por aspecto do jogo"
         )
