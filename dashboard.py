@@ -30,6 +30,62 @@ DEFAULT_ENGINE_PATH = os.environ.get(
 ENGINE_ANALYSIS_VERSION = "stockfish_v2"
 EXCLUDED_TIME_CLASSES = {"bullet"}
 SUPPORTED_TIME_CLASSES = {"rapid", "blitz", "daily"}
+GAME_FILE_RETENTION_HOURS = 48
+ANALYSIS_FILE_RETENTION_HOURS = 24 * 7
+PROGRESS_FILE_RETENTION_HOURS = 24 * 7
+
+
+def cleanup_old_json_files(directory="."):
+    """
+    Remove arquivos JSON antigos para evitar acúmulo no Streamlit Cloud.
+
+    Regras de retenção:
+    - games_*.json: apaga arquivos com mais de 48 horas.
+    - engine_analysis_*.json: apaga arquivos com mais de 7 dias.
+    - blunder_progress_*.json: apaga arquivos com mais de 7 dias.
+    """
+    retention_rules = [
+        ("games_", ".json", GAME_FILE_RETENTION_HOURS),
+        ("engine_analysis_", ".json", ANALYSIS_FILE_RETENTION_HOURS),
+        ("blunder_progress_", ".json", PROGRESS_FILE_RETENTION_HOURS),
+    ]
+
+    deleted_files = []
+    failed_files = []
+    now_timestamp = datetime.now().timestamp()
+
+    try:
+        filenames = os.listdir(directory)
+    except Exception as exc:
+        return deleted_files, [f"Não foi possível listar arquivos para limpeza: {exc}"]
+
+    for filename in filenames:
+        matching_rule = None
+        for prefix, suffix, max_age_hours in retention_rules:
+            if filename.startswith(prefix) and filename.endswith(suffix):
+                matching_rule = (prefix, max_age_hours)
+                break
+
+        if matching_rule is None:
+            continue
+
+        path = os.path.join(directory, filename)
+
+        if not os.path.isfile(path):
+            continue
+
+        prefix, max_age_hours = matching_rule
+        cutoff_timestamp = now_timestamp - (max_age_hours * 60 * 60)
+
+        try:
+            modified_at = os.path.getmtime(path)
+            if modified_at < cutoff_timestamp:
+                os.remove(path)
+                deleted_files.append(filename)
+        except Exception as exc:
+            failed_files.append(f"{filename}: {exc}")
+
+    return deleted_files, failed_files
 
 
 # =========================
@@ -2682,6 +2738,12 @@ st.set_page_config(
     page_icon="♟",
     layout="wide"
 )
+
+if "json_files_cleanup_done" not in st.session_state:
+    deleted_json_files, json_cleanup_errors = cleanup_old_json_files()
+    st.session_state["json_files_cleanup_done"] = True
+    st.session_state["json_files_cleanup_deleted"] = deleted_json_files
+    st.session_state["json_files_cleanup_errors"] = json_cleanup_errors
 
 # Tema visual global dos gráficos Plotly: paleta Café e Madeira.
 COFFEE_BG = "#2C2520"
