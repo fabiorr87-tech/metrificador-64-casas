@@ -527,6 +527,8 @@ with col_info:
     st.write(f"**Abertura:** {exercise.get('opening') or exercise.get('opening_family') or 'não identificada'}")
     st.write(f"**Avaliação antes:** {format_points(exercise.get('eval_before_cp'))} pontos")
     st.write(f"**Avaliação após o lance da partida:** {format_points(exercise.get('eval_after_cp'))} pontos")
+    if exercise.get("best_move_eval_after_cp") is not None:
+        st.write(f"**Avaliação após o melhor lance salvo:** {format_points(exercise.get('best_move_eval_after_cp'))} pontos")
     st.write(f"**Lance jogado na partida:** `{exercise.get('played_move_san')}`")
     if exercise.get("game_url"):
         st.markdown(f"[Abrir partida no Chess.com]({exercise.get('game_url')})")
@@ -605,7 +607,11 @@ with st.form("move_attempt_form", clear_on_submit=False):
             if verdict == "best":
                 st.write(f"**Melhor lance:** `{feedback.get('best_san')}`")
                 st.write(f"**Avaliação após o melhor lance:** {format_points(feedback.get('best_after_user'))} pontos")
+                if feedback.get("engine_used") is False:
+                    st.caption("Resposta validada pelo melhor lance já salvo no exercício; o Stockfish não foi acionado nesta tentativa.")
             else:
+                if feedback.get("used_saved_best_move"):
+                    st.caption("A comparação usou o melhor lance já salvo no exercício; a engine foi acionada apenas para avaliar o lance tentado.")
                 st.caption("Tente novamente para encontrar a melhor continuação. Você pode revelar a solução abaixo, se quiser estudar a posição.")
 
 st.markdown("### Controle de progresso")
@@ -642,6 +648,8 @@ show_solution = st.checkbox("Mostrar solução da engine")
 if show_solution:
     st.markdown("### Solução")
     st.write(f"**Melhor lance salvo na análise:** `{exercise.get('best_move_san') or 'não informado'}`")
+    if exercise.get("best_move_eval_after_cp") is not None:
+        st.write(f"**Avaliação após o melhor lance salvo:** {format_points(exercise.get('best_move_eval_after_cp'))} pontos")
     st.write(f"**Lance jogado na partida:** `{exercise.get('played_move_san')}`")
     st.write(f"**Perda estimada no lance da partida:** {format_points(exercise.get('loss_cp'))} pontos")
 
