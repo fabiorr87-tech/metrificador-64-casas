@@ -28,6 +28,8 @@ DEFAULT_ENGINE_PATH = os.environ.get(
     os.path.join("engines", "stockfish.exe") if os.name == "nt" else "/usr/games/stockfish"
 )
 ENGINE_ANALYSIS_VERSION = "stockfish_v2"
+EXCLUDED_TIME_CLASSES = {"bullet"}
+SUPPORTED_TIME_CLASSES = {"rapid", "blitz", "daily"}
 
 
 # =========================
@@ -2477,6 +2479,7 @@ def get_available_archives(username):
 def download_games_from_chesscom(username):
     archives = get_available_archives(username)
     all_games = []
+    skipped_bullet = 0
 
     progress = st.progress(0, text="Baixando arquivos mensais...")
 
@@ -2485,11 +2488,25 @@ def download_games_from_chesscom(username):
 
         if response.status_code == 200:
             month_data = response.json()
-            all_games.extend(month_data.get("games", []))
+            month_games = month_data.get("games", [])
+
+            for game_data in month_games:
+                time_class = game_data.get("time_class", "unknown")
+
+                # Para manter o app público mais leve, partidas bullet não são salvas no JSON.
+                if time_class in EXCLUDED_TIME_CLASSES:
+                    skipped_bullet += 1
+                    continue
+
+                all_games.append(game_data)
 
         progress.progress((i + 1) / max(len(archives), 1), text="Baixando arquivos mensais...")
 
     progress.empty()
+
+    if skipped_bullet > 0:
+        st.caption(f"Partidas bullet ignoradas para reduzir o tamanho dos arquivos: {skipped_bullet}.")
+
     return all_games
 
 
@@ -2993,7 +3010,10 @@ if st.sidebar.button("Baixar partidas do Chess.com", key="download_games_button"
 
             st.cache_data.clear()
 
-            st.sidebar.success(f"{len(new_games)} partidas baixadas com sucesso para {USERNAME}.")
+            st.sidebar.success(
+                f"{len(new_games)} partidas baixadas com sucesso para {USERNAME}. "
+                "Partidas bullet foram ignoradas para economizar espaço."
+            )
             st.rerun()
 
         except Exception as e:
@@ -3043,6 +3063,12 @@ def load_and_process_games(games_filename, username, file_mtime):
     skipped_games = 0
 
     for game_data in games:
+        # Segurança adicional: mesmo que exista um JSON antigo com partidas bullet,
+        # elas não entram no processamento do dashboard.
+        if game_data.get("time_class") in EXCLUDED_TIME_CLASSES:
+            skipped_games += 1
+            continue
+
         pgn_text = game_data.get("pgn")
 
         if not pgn_text:
@@ -3179,7 +3205,7 @@ side_filter = st.sidebar.selectbox(
 
 time_class_filter = st.sidebar.selectbox(
     "Filtrar por ritmo",
-    ["Rápidas", "Blitz", "Bullet", "Diárias"]
+    ["Rápidas", "Blitz", "Diárias"]
 )
 
 period_filter = st.sidebar.selectbox(
@@ -3208,7 +3234,6 @@ if side_filter != "Todas":
 time_class_map = {
     "Rápidas": "rapid",
     "Blitz": "blitz",
-    "Bullet": "bullet",
     "Diárias": "daily"
 }
 
@@ -3279,11 +3304,10 @@ engine_path = st.sidebar.text_input(
     value=DEFAULT_ENGINE_PATH
 )
 st.session_state["engine_path"] = engine_path
-engine_speed = st.sidebar.selectbox(
-    "Tipo de análise",
-    ["Rápida", "Normal", "Por profundidade"],
-    index=0
-)
+st.sidebar.caption("Tipo de análise Stockfish: Rápida. Esta opção fica travada para preservar desempenho no app público.")
+engine_time = 0.05
+engine_depth = 8
+
 max_engine_games = st.sidebar.number_input(
     "Máximo de partidas novas por vez",
     min_value=1,
@@ -3291,16 +3315,6 @@ max_engine_games = st.sidebar.number_input(
     value=10,
     step=1
 )
-
-if engine_speed == "Rápida":
-    engine_time = 0.05
-    engine_depth = 8
-elif engine_speed == "Normal":
-    engine_time = 0.12
-    engine_depth = 10
-else:
-    engine_time = None
-    engine_depth = st.sidebar.slider("Profundidade", min_value=6, max_value=16, value=8)
 
 if st.sidebar.button("Analisar partidas filtradas com Stockfish", key="stockfish_analysis_button"):
     engine_analysis_data = run_stockfish_analysis_for_dataframe(
