@@ -1,6 +1,7 @@
 import hashlib
 import json
 import os
+import shutil
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
@@ -11,7 +12,7 @@ import pandas as pd
 
 DEFAULT_ENGINE_PATH = os.environ.get(
     "STOCKFISH_PATH",
-    os.path.join("engines", "stockfish.exe") if os.name == "nt" else "/usr/games/stockfish"
+    "stockfish" if os.name != "nt" else os.path.join("engines", "stockfish.exe")
 )
 
 
@@ -414,22 +415,75 @@ def evaluate_attempt(
     engine_time: Optional[float] = 0.10,
     engine_depth: int = 10,
 ) -> Dict[str, Any]:
-    if not os.path.exists(engine_path):
-        return {
-            "status": "error",
-            "message": "Stockfish não encontrado. Confira o caminho informado na barra lateral."
-        }
-
     board = chess.Board(exercise["fen_before"])
     user_color = chess.WHITE if exercise.get("user_color") == "white" else chess.BLACK
+
+    def to_float_or_none(value: Any) -> Optional[float]:
+        try:
+            if value is None or pd.isna(value):
+                return None
+            return float(value)
+        except Exception:
+            return None
 
     try:
         user_move = parse_user_move(board, move_text)
     except ValueError as e:
         return {"status": "error", "message": str(e)}
 
+    user_san = board.san(user_move)
+
+    # Primeiro tenta usar o melhor lance já salvo no exercício. Isso evita chamar
+    # o Stockfish quando o usuário encontra exatamente a solução armazenada.
+    saved_best_move = None
+    saved_best_uci = exercise.get("best_move_uci")
+    saved_best_san = exercise.get("best_move_san")
+
+    if isinstance(saved_best_uci, str) and saved_best_uci.strip():
+        try:
+            candidate = chess.Move.from_uci(saved_best_uci.strip())
+            if candidate in board.legal_moves:
+                saved_best_move = candidate
+        except Exception:
+            saved_best_move = None
+
+    if saved_best_move is None and isinstance(saved_best_san, str) and saved_best_san.strip():
+        try:
+            saved_best_move = board.parse_san(saved_best_san.strip())
+        except Exception:
+            saved_best_move = None
+
+    if saved_best_move is not None and user_move == saved_best_move:
+        best_san = saved_best_san or board.san(saved_best_move)
+        eval_before_user = to_float_or_none(exercise.get("eval_before_cp"))
+        best_after_user = to_float_or_none(exercise.get("best_move_eval_after_cp"))
+
+        # Em exercícios antigos, a avaliação após o melhor lance pode não existir.
+        # Mesmo assim, não chamamos a engine: a confirmação do melhor lance usa o
+        # best_move_uci/best_move_san já salvo.
+        return {
+            "status": "ok",
+            "verdict": "best",
+            "message": "Excelente! Você encontrou o melhor lance salvo pela análise. A engine não precisou ser acionada nesta tentativa.",
+            "user_san": user_san,
+            "best_san": best_san,
+            "eval_before_user": eval_before_user,
+            "user_after_user": best_after_user,
+            "best_after_user": best_after_user,
+            "loss_vs_best": 0,
+            "used_saved_best_move": True,
+            "engine_used": False,
+        }
+
+    resolved_engine_path = shutil.which(engine_path) or engine_path
+    if not resolved_engine_path or not os.path.exists(resolved_engine_path):
+        return {
+            "status": "error",
+            "message": "Stockfish não encontrado. Confira o caminho informado na barra lateral."
+        }
+
     try:
-        engine = chess.engine.SimpleEngine.popen_uci(engine_path)
+        engine = chess.engine.SimpleEngine.popen_uci(resolved_engine_path)
     except Exception as e:
         return {"status": "error", "message": f"Não foi possível iniciar o Stockfish: {e}"}
 
@@ -439,24 +493,30 @@ def evaluate_attempt(
         else:
             limit = chess.engine.Limit(depth=int(engine_depth))
 
-        eval_before_white, best_move = engine_position_info(engine, board, limit)
-        if best_move is None:
-            return {"status": "error", "message": "A engine não retornou melhor lance para esta posição."}
+        eval_before_user = to_float_or_none(exercise.get("eval_before_cp"))
 
-        best_san = board.san(best_move)
-        user_san = board.san(user_move)
+        if saved_best_move is not None:
+            best_move = saved_best_move
+            best_san = saved_best_san or board.san(best_move)
+        else:
+            eval_before_white, best_move = engine_position_info(engine, board, limit)
+            if best_move is None:
+                return {"status": "error", "message": "A engine não retornou melhor lance para esta posição."}
+            best_san = board.san(best_move)
+            if eval_before_user is None:
+                eval_before_user = eval_before_white if user_color == chess.WHITE else -eval_before_white
 
-        best_board = board.copy()
-        best_board.push(best_move)
-        best_after_white, _ = engine_position_info(engine, best_board, limit)
+        best_after_user = to_float_or_none(exercise.get("best_move_eval_after_cp"))
+        if best_after_user is None:
+            best_board = board.copy()
+            best_board.push(best_move)
+            best_after_white, _ = engine_position_info(engine, best_board, limit)
+            best_after_user = best_after_white if user_color == chess.WHITE else -best_after_white
 
         user_board = board.copy()
         user_board.push(user_move)
         user_after_white, _ = engine_position_info(engine, user_board, limit)
-
-        best_after_user = best_after_white if user_color == chess.WHITE else -best_after_white
         user_after_user = user_after_white if user_color == chess.WHITE else -user_after_white
-        eval_before_user = eval_before_white if user_color == chess.WHITE else -eval_before_white
 
         loss_vs_best = max(0, best_after_user - user_after_user)
 
@@ -483,6 +543,8 @@ def evaluate_attempt(
             "user_after_user": user_after_user,
             "best_after_user": best_after_user,
             "loss_vs_best": loss_vs_best,
+            "used_saved_best_move": saved_best_move is not None,
+            "engine_used": True,
         }
 
     finally:
