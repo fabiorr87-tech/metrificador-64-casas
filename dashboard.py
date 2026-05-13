@@ -266,6 +266,81 @@ def detect_opening(game):
     return "Outras"
 
 
+
+def render_responsive_board(board, orientation=chess.WHITE, lastmove=None, check=None, size=420, height=None):
+    """
+    Renderiza o tabuleiro SVG de forma responsiva para desktop e celular.
+
+    O python-chess gera SVG com tamanho fixo; este wrapper força o SVG a respeitar
+    a largura disponível no iframe, evitando cortes laterais em telas pequenas.
+    """
+    board_svg = chess.svg.board(
+        board=board,
+        size=size,
+        orientation=orientation,
+        lastmove=lastmove,
+        check=check,
+    )
+
+    iframe_height = height or min(size + 42, 520)
+
+    components.html(
+        f"""
+        <div class="responsive-board-shell">
+            <div class="responsive-board-inner">
+                {board_svg}
+            </div>
+        </div>
+        <style>
+            html, body {{
+                margin: 0;
+                padding: 0;
+                background: transparent;
+                overflow: hidden;
+            }}
+
+            .responsive-board-shell {{
+                width: 100%;
+                max-width: {size}px;
+                margin: 0 auto;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                box-sizing: border-box;
+            }}
+
+            .responsive-board-inner {{
+                width: 100%;
+                max-width: {size}px;
+                margin: 0 auto;
+                box-sizing: border-box;
+            }}
+
+            .responsive-board-inner svg {{
+                width: 100% !important;
+                height: auto !important;
+                max-width: {size}px !important;
+                display: block;
+                margin: 0 auto;
+            }}
+
+            @media (max-width: 600px) {{
+                .responsive-board-shell,
+                .responsive-board-inner {{
+                    max-width: 94vw;
+                }}
+
+                .responsive-board-inner svg {{
+                    max-width: 94vw !important;
+                }}
+            }}
+        </style>
+        """,
+        height=iframe_height,
+        scrolling=False,
+    )
+
+
 def clean_eco_url(eco_url):
     if not eco_url:
         return None
@@ -4018,12 +4093,7 @@ else:
         st.info("Selecione o primeiro lance para começar a navegar pela árvore.")
 
         initial_board = chess.Board()
-        board_svg = chess.svg.board(
-            board=initial_board,
-            size=420,
-            orientation=orientation
-        )
-        components.html(board_svg, height=440)
+        render_responsive_board(initial_board, orientation=orientation, size=420, height=445)
 
     elif len(current_branch) > 0:
         example_row = current_branch.iloc[0]
@@ -4033,13 +4103,7 @@ else:
             selected_fen = fens[len(selected_moves)]
             board = chess.Board(selected_fen)
 
-            board_svg = chess.svg.board(
-                board=board,
-                size=420,
-                orientation=orientation
-            )
-
-            components.html(board_svg, height=440)
+            render_responsive_board(board, orientation=orientation, size=420, height=445)
 
         st.markdown("### Resumo do ramo selecionado")
 
