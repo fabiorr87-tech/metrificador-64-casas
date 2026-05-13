@@ -1133,6 +1133,20 @@ def analyze_game_with_stockfish(
                 mistakes += 1
 
             if should_create_training_position(before_user, after_user, cp_loss, phase):
+                best_move_eval_after_cp = None
+                if best_move is not None and best_move_uci is not None:
+                    try:
+                        best_board = chess.Board(board_before_fen)
+                        best_board.push(best_move)
+                        best_after_white_for_exercise, _ = engine_position_info(engine, best_board, limit)
+                        best_move_eval_after_cp = (
+                            best_after_white_for_exercise
+                            if user_color == chess.WHITE
+                            else -best_after_white_for_exercise
+                        )
+                    except Exception:
+                        best_move_eval_after_cp = None
+
                 exercise_item = {
                     "game_url": game_url,
                     "date": game_date.isoformat() if hasattr(game_date, "isoformat") else str(game_date) if game_date is not None else None,
@@ -1150,6 +1164,7 @@ def analyze_game_with_stockfish(
                     "played_move_san": played_move_san,
                     "best_move_uci": best_move_uci,
                     "best_move_san": best_move_san,
+                    "best_move_eval_after_cp": round(best_move_eval_after_cp, 0) if best_move_eval_after_cp is not None else None,
                     "eval_before_cp": round(before_user, 0),
                     "eval_after_cp": round(after_user, 0),
                     "loss_cp": round(cp_loss, 0),
@@ -1244,6 +1259,7 @@ def run_stockfish_analysis_for_dataframe(base_df, engine_path, analysis_filename
                 not item.get("exercise_id")
                 or not item.get("difficulty")
                 or not item.get("theme")
+                or (item.get("best_move_uci") and "best_move_eval_after_cp" not in item)
             ):
                 return True
         return False
